@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="旅行记账">
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>旅行记账</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f4f4f1;
+  --surface: #fcfcfb;
+  --surface-2: #f0efec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --border: rgba(11,11,11,0.10);
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --accent-soft: #cde2fb;
+  --bar: #2a78d6;
+  --danger: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #262624;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --border: rgba(255,255,255,0.10);
+    --accent: #3987e5;
+    --accent-soft: #184f95;
+    --bar: #3987e5;
+    --danger: #e66767;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+header h1 { font-size: 18px; margin: 0; font-weight: 650; }
+.rate-status { font-size: 12px; color: var(--muted); }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select { font: inherit; color: var(--ink); }
+
+/* ---------- 行程切换 ---------- */
+.trip-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+#tripSel {
+  flex: 1; min-width: 0; appearance: auto; border: 1px solid var(--border); background: var(--surface);
+  border-radius: 10px; padding: 9px 10px; font-weight: 600;
+}
+
+/* ---------- 输入区 ---------- */
+.amount-row { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--grid); padding-bottom: 6px; }
+.amount-row .sym { font-size: 22px; color: var(--ink-2); min-width: 2ch; }
+#amount {
+  flex: 1; min-width: 0; border: 0; background: transparent; outline: none;
+  font-size: 34px; font-weight: 600; padding: 0;
+}
+#amount::placeholder { color: var(--grid); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.chip {
+  border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 999px; padding: 5px 11px; font-size: 13px;
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.note-row { display: flex; gap: 8px; }
+#note {
+  flex: 1; min-width: 0; border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 10px; padding: 10px 12px; outline: none;
+}
+#note:focus, #amount:focus { outline: none; }
+#note:focus { border-color: var(--accent); }
+#date {
+  border: 1px solid var(--border); background: var(--surface-2);
+  border-radius: 10px; padding: 0 8px; width: 132px;
+}
+.preview { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; min-height: 30px; font-size: 13px; color: var(--ink-2); }
+.cat-pill {
+  border: 1px dashed var(--muted); background: transparent; border-radius: 999px;
+  padding: 3px 10px; font-size: 13px; white-space: nowrap;
+}
+.cat-pill.locked { border-style: solid; border-color: var(--accent); }
+.primary {
+  width: 100%; margin-top: 12px; border: 0; border-radius: 12px; padding: 12px;
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 16px;
+}
+.primary:disabled { opacity: .4; cursor: default; }
+
+/* ---------- 分类选择器 ---------- */
+.cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.cat-grid button {
+  border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px;
+  padding: 8px 2px; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.cat-grid button .ic { font-size: 18px; }
+.cat-grid button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.hidden { display: none !important; }
+
+/* ---------- Tabs ---------- */
+.tabs { display: flex; gap: 4px; background: var(--surface-2); border-radius: 10px; padding: 3px; margin-bottom: 14px; }
+.tabs button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 7px; font-size: 14px; color: var(--ink-2); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+
+/* ---------- 明细 ---------- */
+.day { margin-bottom: 14px; }
+.day-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 0 4px 6px; }
+.entries { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.entry {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; width: 100%;
+  border: 0; background: transparent; text-align: left; border-top: 1px solid var(--grid);
+}
+.entry:first-child { border-top: 0; }
+.entry .ic { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+.entry .mid { flex: 1; min-width: 0; }
+.entry .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry .sub { font-size: 12px; color: var(--muted); }
+.entry .amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.entry .amt .orig { font-size: 12px; color: var(--muted); }
+.empty { text-align: center; color: var(--muted); padding: 32px 0; font-size: 14px; }
+
+/* ---------- 分析 ---------- */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px; min-width: 0; }
+.tile .k { font-size: 12px; color: var(--ink-2); }
+.tile .v { font-size: 20px; font-weight: 650; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v.big { font-size: 22px; }
+h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+h2 small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.hbar { display: grid; grid-template-columns: minmax(76px, 34%) 1fr auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; }
+.hbar .lbl { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar .track { height: 12px; position: relative; }
+.hbar .fill { height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 2px; }
+.hbar .val { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.hbar .val small { color: var(--muted); margin-left: 4px; }
+.hbar:hover .fill { filter: brightness(1.12); }
+.vchart { position: relative; height: 150px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--grid); }
+.vchart .col { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+.vchart .col .bar { width: 100%; background: var(--bar); border-radius: 4px 4px 0 0; min-height: 0; }
+.vchart .col:hover .bar { filter: brightness(1.15); }
+.vchart .gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--grid); pointer-events: none; }
+.vchart .gridline span { position: absolute; right: 0; top: -16px; font-size: 11px; color: var(--muted); background: var(--surface); padding-left: 4px; }
+.xaxis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+#tip {
+  position: fixed; z-index: 50; pointer-events: none; background: var(--ink); color: var(--surface);
+  font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; opacity: 0; transition: opacity .1s;
+}
+
+/* ---------- 设置 ---------- */
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--grid); }
+.set-row:first-of-type { border-top: 0; }
+.set-row .desc { font-size: 12px; color: var(--muted); }
+.btn {
+  border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; padding: 7px 12px; font-size: 13px; white-space: nowrap;
+}
+.btn.danger { color: var(--danger); }
+select.btn { appearance: auto; }
+.rates-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.rates-table td { padding: 4px 0; border-top: 1px solid var(--grid); }
+.rates-table td:last-child { text-align: right; }
+
+/* ---------- 编辑弹窗 ---------- */
+dialog {
+  border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--ink);
+  width: min(440px, calc(100vw - 32px)); padding: 18px;
+}
+dialog::backdrop { background: rgba(0,0,0,.4); }
+dialog label { display: block; font-size: 12px; color: var(--ink-2); margin: 10px 0 4px; }
+dialog input, dialog select {
+  width: 100%; border: 1px solid var(--border); background: var(--surface-2); border-radius: 10px; padding: 9px 11px;
+}
+.dlg-actions { display: flex; gap: 8px; margin-top: 16px; }
+.dlg-actions .btn { flex: 1; padding: 10px; }
+.dlg-actions .btn.save { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--surface);
+  padding: 8px 14px; border-radius: 999px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60;
+}
+@media (max-width: 420px) {
+  .cat-grid { grid-template-columns: repeat(4, 1fr); }
+  .tile .v { font-size: 17px; }
+  #date { width: 118px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>旅行记账</h1>
+    <span class="rate-status" id="rateStatus">汇率加载中…</span>
+  </header>
+
+  <div class="trip-bar">
+    <select id="tripSel" aria-label="当前行程"></select>
+    <button class="btn" id="newTrip" type="button">＋ 新建行程</button>
+  </div>
+
+  <!-- 输入卡片 -->
+  <section class="card" id="entryCard">
+    <div class="amount-row">
+      <span class="sym" id="sym">¥</span>
+      <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="金额">
+    </div>
+    <div class="chips" id="curChips" role="group" aria-label="币种"></div>
+    <div class="note-row">
+      <input id="note" autocomplete="off" placeholder="明细，如：午饭 拉面" aria-label="明细">
+      <input id="date" type="date" aria-label="日期">
+    </div>
+    <div class="preview">
+      <span id="convPreview"></span>
+      <button class="cat-pill" id="catPill" type="button" title="点击修改分类">自动分类</button>
+    </div>
+    <div class="cat-grid hidden" id="catPicker"></div>
+    <button class="primary" id="addBtn" disabled>记一笔</button>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="list">明细</button>
+    <button role="tab" aria-selected="false" data-tab="stats">分析</button>
+    <button role="tab" aria-selected="false" data-tab="settings">设置</button>
+  </nav>
+
+  <section id="tab-list"></section>
+
+  <section id="tab-stats" class="hidden">
+    <div class="filters" id="periodChips"></div>
+    <div class="tiles">
+      <div class="tile"><div class="k">总支出</div><div class="v big" id="tTotal">–</div></div>
+      <div class="tile"><div class="k">日均</div><div class="v" id="tAvg">–</div></div>
+      <div class="tile"><div class="k">笔数</div><div class="v" id="tCount">–</div></div>
+    </div>
+    <div class="card"><h2>分类占比<small id="catSub"></small></h2><div id="catBars"></div></div>
+    <div class="card"><h2 id="trendTitle">每日支出</h2><div id="trend"></div></div>
+    <div class="card" id="tripCard"><h2>各行程花费</h2><div id="tripBars"></div></div>
+    <div class="card" id="personCard"><h2>按记账人</h2><div id="personBars"></div></div>
+    <div class="card"><h2>按币种（实际支付）</h2><div id="curBars"></div></div>
+    <div class="card"><h2>单笔最高</h2><div id="topList"></div></div>
+  </section>
+
+  <section id="tab-settings" class="hidden">
+    <div class="card">
+      <div class="set-row">
+        <div><div>统计币种</div><div class="desc">所有消费换算成此币种累计</div></div>
+        <select class="btn" id="baseSel"></select>
+      </div>
+      <div class="set-row">
+        <div><div>汇率</div><div class="desc" id="rateDesc"></div></div>
+        <button class="btn" id="refreshRates">刷新</button>
+      </div>
+      <div class="set-row">
+        <div><div>导出 CSV</div><div class="desc">可用 Excel / Numbers 打开</div></div>
+        <button class="btn" id="exportCsv">导出</button>
+      </div>
+      <div class="set-row">
+        <div><div>备份 / 恢复</div><div class="desc">数据只保存在本机，建议定期备份</div></div>
+        <span><button class="btn" id="backup">备份</button> <button class="btn" id="restore">恢复</button></span>
+      </div>
+      <div class="set-row">
+        <div><div>合并家人的账</div><div class="desc">导入家人的备份文件，追加到你的账本（不会重复）</div></div>
+        <button class="btn" id="merge">合并导入</button>
+      </div>
+      <div class="set-row">
+        <div><div>清空全部数据</div><div class="desc">不可撤销</div></div>
+        <button class="btn danger" id="wipe">清空</button>
+      </div>
+      <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
+      <input type="file" id="mergeFile" accept=".json,application/json" class="hidden">
+    </div>
+    <div class="card"><h2>行程管理</h2><div id="tripManage"></div></div>
+    <div class="card"><h2>当前汇率<small id="rateBaseNote"></small></h2><table class="rates-table" id="ratesTable"></table></div>
+  </section>
+</div>
+
+<dialog id="editDlg">
+  <form method="dialog" id="editForm">
+    <h2 style="margin:0">编辑记录</h2>
+    <label>金额</label><input id="eAmount" inputmode="decimal">
+    <label>币种</label><select id="eCur"></select>
+    <label>明细</label><input id="eNote">
+    <label>日期</label><input id="eDate" type="date">
+    <label>分类</label><select id="eCat"></select>
+    <label>行程</label><select id="eTrip"></select>
+    <div class="dlg-actions">
+      <button class="btn danger" value="delete" type="submit">删除</button>
+      <button class="btn" value="cancel" type="submit">取消</button>
+      <button class="btn save" value="save" type="submit">保存</button>
+    </div>
+  </form>
+</dialog>
+<div id="tip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ================= 基础配置 ================= */
+const CURRENCIES = [
+  { code: 'CNY', name: '人民币',   sym: '¥',   dp: 2 },
+  { code: 'USD', name: '美元',     sym: '$',   dp: 2 },
+  { code: 'PHP', name: '菲律宾比索', sym: '₱',   dp: 2 },
+  { code: 'JPY', name: '日元',     sym: '円',  dp: 0 },
+  { code: 'EUR', name: '欧元',     sym: '€',   dp: 2 },
+  { code: 'SGD', name: '新币',     sym: 'S$',  dp: 2 },
+  { code: 'MYR', name: '马币',     sym: 'RM',  dp: 2 },
+  { code: 'IDR', name: '印尼盾',   sym: 'Rp',  dp: 0 },
+  { code: 'THB', name: '泰铢',     sym: '฿',   dp: 2 },
+  { code: 'AUD', name: '澳元',     sym: 'A$',  dp: 2 },
+];
+const CUR = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
+
+// 离线兜底汇率（每 1 美元），仅在网络不可用且没有缓存时使用
+const FALLBACK_RATES = { USD: 1, CNY: 7.15, PHP: 57.5, JPY: 148, EUR: 0.86, SGD: 1.29, MYR: 4.22, IDR: 16400, THB: 32.5, AUD: 1.52 };
+
+// 旅行分类。数组顺序 = 显示顺序；prio 越小，同等匹配强度时越优先。
+const CATEGORIES = [
+  { id: 'flight', name: '机票', ic: '✈️', prio: 1, kw: [
+    '机票','飞机票','飞机','航班','值机','行李额','托运','选座','改签','亚航','宿务航空','菲航','国航','东航','南航','春秋航空','吉祥航空','国泰','新航','酷航','捷星','狮航','越捷','全日空','日航','廉航',
+    'flight','airline','airfare','air ticket','airasia','cebu pacific','cebupac','scoot','jetstar','lion air','vietjet','philippine airlines','singapore airlines','cathay','baggage','seat selection'
+  ]},
+  { id: 'hotel', name: '酒店', ic: '🏨', prio: 2, kw: [
+    '酒店','住宿','民宿','旅馆','宾馆','客栈','青旅','房费','度假村','旅店','胶囊旅馆','续住',
+    'hotel','hostel','airbnb','agoda','booking.com','resort','inn','ryokan','guesthouse','guest house','motel','villa','homestay','capsule'
+  ]},
+  { id: 'food', name: '餐饮', ic: '🍜', prio: 4, kw: [
+    '饭','餐','早饭','早餐','午饭','午餐','晚饭','晚餐','夜宵','宵夜','面条','拉面','米粉','河粉','米线','粥','饺子','包子','火锅','烧烤','烤串','寿司','刺身','便当','丼','咖啡','星巴克','奶茶','饮料','果汁','椰子','水果','芒果','零食','甜品','蛋糕','面包','冰淇淋','啤酒','酒吧','喝酒','小吃','夜市','外卖','烤肉','披萨','汉堡','炸鸡','快餐','自助','聚餐','下午茶','海鲜','大排档','矿泉水','买水','喝水','居酒屋','冬阴功','肉骨茶','叻沙',
+    'lunch','dinner','breakfast','brunch','food','meal','coffee','cafe','latte','tea','boba','milk tea','drink','beer','bar','snack','dessert','bakery','restaurant','buffet','pizza','burger','ramen','sushi','noodle','kfc','mcdonald','mcdonalds','mcd','starbucks','jollibee','chowking','mang inasal','grabfood','foodpanda','gofood','yoshinoya','sukiya','matsuya','ichiran','izakaya','hawker','kopi','nasi','pho','pad thai','dim sum','seafood','water','juice','coconut','mango','lechon','halo-halo'
+  ]},
+  { id: 'transport', name: '交通', ic: '🚕', prio: 5, kw: [
+    '打车','出租','出租车','滴滴','地铁','公交','巴士','大巴','火车','高铁','动车','新干线','电车','轮渡','渡轮','船票','快艇','摩的','三轮','嘟嘟车','租车','包车','加油','油费','停车','过路费','高速费','交通卡','西瓜卡','八达通','机场大巴','机场快线','接机','送机','机场接送','单车','租摩托','摩托车','缆车',
+    'taxi','uber','grab','gojek','bolt','lyft','mrt','lrt','bts','metro','subway','train','bus','jeepney','tricycle','tuk tuk','tuktuk','angkas','ferry','boat','speedboat','parking','toll','fuel','petrol','shinkansen','jr pass','suica','pasmo','icoca','ez-link','rabbit card','car rental','scooter','motorbike','airport transfer'
+  ]},
+  { id: 'exp', name: '体验', ic: '🎫', prio: 3, kw: [
+    '门票','景点','潜水','深潜','浮潜','潜水证','跳岛','出海','一日游','半日游','包团','旅游团','跟团','导游','向导','按摩','泰式按摩','足疗','足浴','水疗','温泉','泡汤','演出','表演','电影','演唱会','博物馆','美术馆','乐园','迪士尼','环球影城','动物园','水族馆','冲浪','滑雪','徒步','观鲸','鲸鲨','旅拍','体验','烹饪课','游船','夜游','玩',
+    'ticket','tour','day tour','museum','cinema','movie','concert','show','massage','spa','diving','dive','scuba','snorkel','snorkeling','island hopping','disney','universal','onsen','surf','surfing','ski','hiking','trek','whale shark','klook','kkday','viator','getyourguide','entrance fee','admission','theme park','zoo','aquarium','karaoke','cooking class','zipline','canyoneering','cruise'
+  ]},
+  { id: 'shopping', name: '购物', ic: '🛍️', prio: 8, kw: [
+    '购物','衣服','裤子','鞋','鞋子','包包','帽子','外套','裙子','泳衣','泳裤','墨镜','太阳镜','防晒','防晒霜','首饰','化妆品','护肤品','口红','香水','电子产品','耳机','相机','数码','免税','免税店','药妆','超市','便利店','商场','奥特莱斯','拖鞋',
+    'shopping','clothes','shirt','shoes','bag','uniqlo','zara','h&m','muji','daiso','don quijote','donki','lazada','shopee','duty free','mall','outlet','supermarket','grocery','7-11','7-eleven','711','familymart','lawson','ministop','alfamart','indomaret','watsons','aeon','sunscreen','swimsuit','sunglasses'
+  ]},
+  { id: 'souvenir', name: '伴手礼', ic: '🎁', prio: 6, kw: [
+    '伴手礼','手信','特产','土特产','纪念品','送人','送礼','礼物','礼品','带给','冰箱贴','明信片',
+    'souvenir','gift','pasalubong','omiyage','postcard','magnet'
+  ]},
+  { id: 'visa', name: '签证保险', ic: '📄', prio: 7, kw: [
+    '签证','落地签','电子签','签注','护照','旅游险','旅行险','保险','入境费','出境费','机场税','离境税','机场建设费','环境税','入境卡',
+    'visa','evisa','e-visa','eta','esta','insurance','travel insurance','terminal fee','departure tax','travel tax','tdac','etravel'
+  ]},
+  { id: 'other', name: '其他', ic: '📦', prio: 9, kw: [
+    '电话卡','手机卡','流量','流量套餐','上网卡','话费','充值','漫游','随身wifi','小费','打赏','换汇','换钱','手续费','取现','洗衣','干洗','药','买药','药店','医院','诊所','寄存','行李寄存','快递','雨伞',
+    'esim','sim','data','top up','topup','load','tip','laundry','atm','pharmacy','medicine','hospital','clinic','airalo','pocket wifi','exchange','fee','locker','globe','dito','telkomsel','singtel'
+  ]},
+];
+// 正则规则：比如「给妈妈买…」「帮同事带…」算伴手礼
+const RULES = [
+  { re: /(给|帮|替).{1,6}(买|带)/, cat: 'souvenir', w: 6 },
+];
+const CAT = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
+
+/* ================= 存储 ================= */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('fx-ledger:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('fx-ledger:' + k, JSON.stringify(v)); } catch {} },
+};
+let entries = store.get('entries', []);        // {id, date, amount, cur, note, cat, usd, rate, tripId, by?, createdAt}
+let trips = store.get('trips', []);            // {id, name, createdAt}
+let learned = store.get('learned', {});        // 明细关键词 -> 分类（用户纠正后学习）
+let settings = Object.assign({ base: 'CNY', lastCur: 'CNY', scope: 'trip', tripId: null, schema: 1 }, store.get('settings', {}));
+let rates = store.get('rates', null);          // {rates:{...}, date, source, fetchedAt}
+
+const saveEntries = () => store.set('entries', entries);
+const saveTrips = () => store.set('trips', trips);
+const saveSettings = () => store.set('settings', settings);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+/* ================= 汇率 ================= */
+const SYMBOLS = CURRENCIES.map(c => c.code).filter(c => c !== 'USD').join(',');
+async function fetchRates() {
+  const sources = [
+    async () => {
+      const r = await fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=' + SYMBOLS);
+      if (!r.ok) throw 0; const j = await r.json();
+      return { rates: { USD: 1, ...j.rates }, date: j.date, source: 'ECB (frankfurter)' };
+    },
+    async () => {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD');
+      if (!r.ok) throw 0; const j = await r.json();
+      if (j.result !== 'success') throw 0;
+      return { rates: j.rates, date: (j.time_last_update_utc || '').slice(5, 16), source: 'ExchangeRate-API' };
+    },
+  ];
+  for (const s of sources) {
+    try {
+      const res = await s();
+      if (CURRENCIES.every(c => res.rates[c.code] > 0)) {
+        const picked = Object.fromEntries(CURRENCIES.map(c => [c.code, res.rates[c.code]]));
+        rates = { rates: picked, date: res.date, source: res.source, fetchedAt: Date.now() };
+        store.set('rates', rates);
+        return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+function R() { return (rates && rates.rates) || FALLBACK_RATES; }
+const toUSD = (amt, cur) => amt / R()[cur];
+const fromUSD = (usd, cur) => usd * R()[cur];
+
+function renderRateStatus() {
+  const el = document.getElementById('rateStatus');
+  if (!rates) { el.textContent = '离线估算汇率'; return; }
+  const age = Date.now() - rates.fetchedAt;
+  el.textContent = '汇率 ' + rates.date + (age > 36e5 * 24 ? '（缓存）' : '');
+}
+
+/* ================= 格式化 ================= */
+function fmt(amount, cur, opts = {}) {
+  const c = CUR[cur];
+  let dp = c.dp;
+  if (opts.compact && Math.abs(amount) >= 10000) {
+    const units = Math.abs(amount) >= 1e8 ? [1e8, '亿'] : [1e4, '万'];
+    return c.sym + (amount / units[0]).toFixed(Math.abs(amount) >= units[0] * 100 ? 0 : 1) + units[1];
+  }
+  if (opts.round) dp = 0;
+  return c.sym + amount.toLocaleString('zh-CN', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+const baseVal = e => fromUSD(e.usd, settings.base);
+const isoDate = d => { const y = new Date(d); y.setMinutes(y.getMinutes() - y.getTimezoneOffset()); return y.toISOString().slice(0, 10); };
+const today = () => isoDate(new Date());
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+// 金额支持简单算式，如 120+35.5
+function parseAmount(s) {
+  s = String(s).replace(/[,，\s]/g, '').replace(/[×xX]/g, '*').replace(/÷/g, '/');
+  if (!s || !/^[0-9.+\-*/()]+$/.test(s)) return NaN;
+  try { const v = Function('"use strict";return (' + s + ')')(); return Number.isFinite(v) ? Math.round(v * 100) / 100 : NaN; }
+  catch { return NaN; }
+}
+
+/* ================= 自动分类 ================= */
+// 匹配强度：一个汉字算 2，一个字母/数字算 1（汉字信息量更大）
+const weight = s => [...s].reduce((w, ch) => w + (/[　-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// 预编译：英文关键词按整词匹配（允许复数 s），中文按子串匹配
+const MATCHERS = CATEGORIES.flatMap(c => c.kw.map(k => {
+  const kk = k.toLowerCase();
+  const ascii = /^[\x20-\x7e]+$/.test(kk);
+  return { cat: c.id, prio: c.prio, w: weight(kk),
+    re: new RegExp(ascii ? '(?<![a-z0-9])' + reEsc(kk) + 's?(?![a-z0-9])' : reEsc(kk), 'g') };
+}));
+
+function classify(note) {
+  const n = note.toLowerCase().trim();
+  if (!n) return 'other';
+  // 1) 用户纠正过的关键词优先（最长匹配）
+  let best = null, bestLen = 0;
+  for (const [k, cat] of Object.entries(learned)) {
+    if (k && n.includes(k) && k.length > bestLen && CAT[cat]) { best = cat; bestLen = k.length; }
+  }
+  if (best) return best;
+  // 2) 找出所有命中（含位置）
+  const hits = [];
+  for (const m of MATCHERS) {
+    m.re.lastIndex = 0;
+    let r;
+    while ((r = m.re.exec(n))) { hits.push({ s: r.index, e: r.index + r[0].length, w: m.w, cat: m.cat, prio: m.prio }); if (!r[0].length) m.re.lastIndex++; }
+  }
+  for (const rule of RULES) {
+    const r = rule.re.exec(n);
+    if (r) hits.push({ s: r.index, e: r.index + r[0].length, w: rule.w, cat: rule.cat, prio: CAT[rule.cat].prio });
+  }
+  if (!hits.length) return 'other';
+  // 3) 重叠的命中只保留一个：更强的胜出，一样强取靠前的（「潜水费用」里「潜水」胜过「水费」）
+  hits.sort((a, b) => b.w - a.w || a.s - b.s || a.prio - b.prio);
+  const kept = [];
+  for (const h of hits) if (!kept.some(k => h.s < k.e && k.s < h.e)) kept.push(h);
+  // 4) 剩下互不重叠的：最强的胜出，一样强按分类优先级
+  kept.sort((a, b) => b.w - a.w || a.prio - b.prio);
+  return kept[0].cat;
+}
+function learn(note, cat) {
+  const key = note.toLowerCase().trim();
+  if (!key) return;
+  learned[key] = cat;
+  // 同时学习明细里的每个词（按空格切分），方便以后部分匹配
+  key.split(/\s+/).filter(w => w.length >= 2 && w !== key).forEach(w => { if (!learned[w]) learned[w] = cat; });
+  store.set('learned', learned);
+}
+
+// 内置测试：在控制台运行 runClassifyTests()
+const CLASSIFY_TESTS = [
+  ['潜水费用', 'exp'], ['潜水', 'exp'], ['深潜 两次', 'exp'], ['跳岛游', 'exp'], ['泰式按摩', 'exp'], ['island hopping tour', 'exp'],
+  ['KKday 一日游', 'exp'], ['环球影城门票', 'exp'], ['看鲸鲨', 'exp'],
+  ['Agoda 曼谷酒店', 'hotel'], ['民宿', 'hotel'], ['Airbnb 两晚', 'hotel'],
+  ['宿务航空', 'flight'], ['回程机票', 'flight'], ['AirAsia 行李额', 'flight'], ['行李额', 'flight'],
+  ['给妈妈买特产', 'souvenir'], ['冰箱贴', 'souvenir'], ['pasalubong', 'souvenir'], ['帮同事带白色恋人', 'souvenir'],
+  ['落地签', 'visa'], ['旅游险', 'visa'], ['机场税', 'visa'], ['terminal fee', 'visa'],
+  ['Grab 去机场', 'transport'], ['地铁', 'transport'], ['JR Pass', 'transport'], ['新干线', 'transport'], ['机场大巴', 'transport'], ['包车', 'transport'],
+  ['午饭 拉面', 'food'], ['Jollibee', 'food'], ['7-11 买水', 'food'], ['星巴克', 'food'],
+  ['免税店 香水', 'shopping'], ['Uniqlo 衣服', 'shopping'],
+  ['eSIM', 'other'], ['Airalo esim', 'other'], ['小费', 'other'], ['换汇手续费', 'other'], ['洗衣', 'other'], ['流量套餐', 'other'], ['随便什么', 'other'],
+];
+function runClassifyTests() {
+  const saved = learned; learned = {};
+  const fails = CLASSIFY_TESTS.filter(([t, want]) => classify(t) !== want).map(([t, want]) => `${t}: 期望 ${want}，实际 ${classify(t)}`);
+  learned = saved;
+  return { total: CLASSIFY_TESTS.length, passed: CLASSIFY_TESTS.length - fails.length, fails };
+}
+
+/* ================= 行程 & 数据迁移 ================= */
+function ensureTrip() {
+  if (!trips.length) { trips.push({ id: uid(), name: '我的旅行', createdAt: Date.now() }); saveTrips(); }
+  if (!trips.some(t => t.id === settings.tripId)) { settings.tripId = trips[trips.length - 1].id; saveSettings(); }
+}
+function migrate() {
+  if (settings.schema >= 2) return;
+  ensureTrip();
+  const OLD = { food: 'food', transport: 'transport', lodging: 'hotel', shopping: 'shopping', fun: 'exp', social: 'souvenir', other: 'other' };
+  learned = Object.fromEntries(Object.entries(learned).filter(([, c]) => OLD[c]).map(([k, c]) => [k, OLD[c]]));
+  store.set('learned', learned);
+  entries.forEach(e => { if (!e.tripId) e.tripId = trips[0].id; e.cat = classify(e.note); });
+  saveEntries();
+  settings.schema = 2; saveSettings();
+}
+const curTrip = () => trips.find(t => t.id === settings.tripId);
+const tripEntries = id => entries.filter(e => e.tripId === id);
+
+function renderTripSel() {
+  $('tripSel').innerHTML = [...trips].reverse().map(t =>
+    `<option value="${t.id}" ${t.id === settings.tripId ? 'selected' : ''}>🧳 ${esc(t.name)}</option>`).join('');
+}
+$('tripSel').addEventListener('change', e => { settings.tripId = e.target.value; saveSettings(); renderAll(); });
+$('newTrip').addEventListener('click', () => {
+  const name = (prompt('新行程名称，例如：东京 2026-11') || '').trim();
+  if (!name) return;
+  const t = { id: uid(), name, createdAt: Date.now() };
+  trips.push(t); saveTrips();
+  settings.tripId = t.id; settings.scope = 'trip'; saveSettings();
+  renderAll(); toast('已切换到「' + name + '」');
+});
+
+/* ================= 输入区 ================= */
+let curSel = settings.lastCur;
+let catOverride = null;
+
+function renderCurChips() {
+  $('curChips').innerHTML = CURRENCIES.map(c =>
+    `<button class="chip" type="button" data-cur="${c.code}" aria-pressed="${c.code === curSel}">${c.name} ${c.code}</button>`).join('');
+  $('sym').textContent = CUR[curSel].sym;
+}
+$('curChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cur]'); if (!b) return;
+  curSel = b.dataset.cur; settings.lastCur = curSel; saveSettings();
+  renderCurChips(); updatePreview(); $('amount').focus();
+});
+
+function renderCatPicker(target, selected) {
+  target.innerHTML = CATEGORIES.map(c =>
+    `<button type="button" data-cat="${c.id}" aria-pressed="${c.id === selected}"><span class="ic">${c.ic}</span>${c.name}</button>`).join('');
+}
+function currentCat() { return catOverride || classify($('note').value); }
+
+function updatePreview() {
+  const amt = parseAmount($('amount').value);
+  const ok = amt > 0;
+  $('addBtn').disabled = !ok;
+  let txt = '';
+  if (ok) {
+    const v = fromUSD(toUSD(amt, curSel), settings.base);
+    txt = (/[+\-*/]/.test($('amount').value) ? '= ' + fmt(amt, curSel) + ' · ' : '') +
+          (curSel !== settings.base ? '≈ ' + fmt(v, settings.base) : '');
+  }
+  $('convPreview').textContent = txt;
+  const cat = CAT[currentCat()];
+  const pill = $('catPill');
+  pill.textContent = cat.ic + ' ' + cat.name + (catOverride ? '' : ' · 自动');
+  pill.classList.toggle('locked', !!catOverride);
+  if (!$('catPicker').classList.contains('hidden')) renderCatPicker($('catPicker'), cat.id);
+}
+$('amount').addEventListener('input', updatePreview);
+$('note').addEventListener('input', updatePreview);
+$('catPill').addEventListener('click', () => {
+  const p = $('catPicker'); p.classList.toggle('hidden');
+  renderCatPicker(p, currentCat());
+});
+$('catPicker').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]'); if (!b) return;
+  catOverride = b.dataset.cat; $('catPicker').classList.add('hidden'); updatePreview();
+});
+['amount', 'note'].forEach(id => $(id).addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  e.preventDefault();
+  if (id === 'amount' && !$('note').value) $('note').focus(); else addEntry();
+}));
+$('addBtn').addEventListener('click', addEntry);
+
+function addEntry() {
+  const amt = parseAmount($('amount').value);
+  if (!(amt > 0)) { $('amount').focus(); return; }
+  const note = $('note').value.trim();
+  const cat = currentCat();
+  if (catOverride && note && catOverride !== classify(note)) learn(note, catOverride);
+  entries.push({
+    id: uid(), date: $('date').value || today(), amount: amt, cur: curSel, note, cat,
+    usd: toUSD(amt, curSel), rate: R()[curSel], tripId: settings.tripId, createdAt: Date.now(),
+  });
+  saveEntries();
+  $('amount').value = ''; $('note').value = ''; catOverride = null;
+  $('catPicker').classList.add('hidden');
+  updatePreview(); renderAll();
+  toast(`已记录 ${CAT[cat].ic} ${fmt(amt, curSel)}`);
+  $('amount').focus();
+}
+
+/* ================= 明细列表 ================= */
+function entryRow(e, sub) {
+  const c = CAT[e.cat] || CAT.other;
+  const same = e.cur === settings.base;
+  return `<button class="entry" data-id="${e.id}">
+    <span class="ic">${c.ic}</span>
+    <span class="mid"><div class="note">${esc(e.note || c.name)}</div><div class="sub">${esc(sub)}</div></span>
+    <span class="amt"><div>${fmt(baseVal(e), settings.base)}</div>${same ? '' : `<div class="orig">${fmt(e.amount, e.cur)}</div>`}</span>
+  </button>`;
+}
+function renderList() {
+  const el = $('tab-list');
+  const list = tripEntries(settings.tripId);
+  if (!list.length) { el.innerHTML = '<div class="empty">这个行程还没有记录。<br>输入金额、选币种、写明细，回车即可。</div>'; return; }
+  const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  const groups = new Map();
+  sorted.forEach(e => { if (!groups.has(e.date)) groups.set(e.date, []); groups.get(e.date).push(e); });
+  const wk = ['日', '一', '二', '三', '四', '五', '六'];
+  const total = list.reduce((s, e) => s + baseVal(e), 0);
+  let html = `<div class="day-head" style="padding-bottom:10px"><span>${esc(curTrip().name)} · ${list.length} 笔</span><span>合计 ${fmt(total, settings.base)}</span></div>`;
+  for (const [date, items] of groups) {
+    const d = new Date(date + 'T00:00');
+    const sum = items.reduce((s, e) => s + baseVal(e), 0);
+    const label = date === today() ? '今天' : `${d.getMonth() + 1}月${d.getDate()}日 周${wk[d.getDay()]}`;
+    html += `<div class="day"><div class="day-head"><span>${label}</span><span>${fmt(sum, settings.base)}</span></div><div class="entries">`;
+    for (const e of items) html += entryRow(e, (CAT[e.cat] || CAT.other).name + (e.by ? ' · ' + e.by : ''));
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+}
+$('tab-list').addEventListener('click', e => {
+  const b = e.target.closest('.entry'); if (b) openEdit(b.dataset.id);
+});
+
+/* ================= 编辑 ================= */
+let editingId = null;
+$('eCur').innerHTML = CURRENCIES.map(c => `<option value="${c.code}">${c.name} ${c.code}</option>`).join('');
+$('eCat').innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.ic} ${c.name}</option>`).join('');
+function openEdit(id) {
+  const e = entries.find(x => x.id === id); if (!e) return;
+  editingId = id;
+  $('eTrip').innerHTML = trips.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  $('eAmount').value = e.amount; $('eCur').value = e.cur; $('eNote').value = e.note;
+  $('eDate').value = e.date; $('eCat').value = e.cat; $('eTrip').value = e.tripId;
+  $('editDlg').showModal();
+}
+$('editDlg').addEventListener('close', () => {
+  const action = $('editDlg').returnValue;
+  const i = entries.findIndex(x => x.id === editingId);
+  if (i < 0) return;
+  if (action === 'delete') {
+    if (!confirm('删除这条记录？')) return;
+    entries.splice(i, 1);
+  } else if (action === 'save') {
+    const e = entries[i];
+    const amt = parseAmount($('eAmount').value);
+    if (!(amt > 0)) { toast('金额无效'); return; }
+    const note = $('eNote').value.trim(), cat = $('eCat').value, cur = $('eCur').value;
+    if (cat !== e.cat && note) learn(note, cat);
+    // 金额或币种变了：币种未变沿用该笔原汇率，否则用当前汇率
+    if (amt !== e.amount || cur !== e.cur) {
+      const r = cur === e.cur && e.rate ? e.rate : R()[cur];
+      e.usd = amt / r; e.rate = r;
+    }
+    Object.assign(e, { amount: amt, cur, note, cat, date: $('eDate').value || e.date, tripId: $('eTrip').value || e.tripId });
+  } else return;
+  saveEntries(); renderAll();
+});
+
+/* ================= 分析 ================= */
+const SCOPES = [{ id: 'trip', name: '当前行程' }, { id: 'all', name: '全部行程' }];
+function daysBetween(a, b) { return Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5) + 1; }
+function hbars(rows, max) {
+  return rows.map(r => `<div class="hbar" data-tip="${esc(r.tip)}">
+      <span class="lbl">${r.label}</span>
+      <span class="track"><div class="fill" style="width:${max ? r.v / max * 100 : 0}%"></div></span>
+      <span class="val">${r.val}</span></div>`).join('');
+}
+const EMPTY = '<div class="empty">还没有记录</div>';
+
+function renderStats() {
+  $('periodChips').innerHTML = SCOPES.map(p =>
+    `<button class="chip" data-p="${p.id}" aria-pressed="${p.id === settings.scope}">${p.name}${p.id === 'trip' ? '：' + esc(curTrip().name) : ''}</button>`).join('');
+  const all = settings.scope === 'all';
+  const list = all ? entries : tripEntries(settings.tripId);
+  const B = settings.base;
+  const total = list.reduce((s, e) => s + baseVal(e), 0);
+  const dates = list.map(e => e.date).sort();
+  const from = dates[0] || today(), to = dates[dates.length - 1] || today();
+  const span = daysBetween(from, to);
+  // 日均：当前行程按有记录的首末日期算天数；全部行程按实际有消费的天数算
+  const days = all ? new Set(dates).size || 1 : span;
+  $('tTotal').textContent = fmt(total, B, { compact: true, round: total >= 1000 });
+  $('tAvg').textContent = fmt(total / days, B, { compact: true, round: total / days >= 1000 });
+  $('tCount').textContent = list.length + (all ? '' : ` · ${span}天`);
+
+  // 分类
+  const byCat = {};
+  list.forEach(e => byCat[e.cat] = (byCat[e.cat] || 0) + baseVal(e));
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  $('catSub').textContent = cats.length ? `${cats.length} 类` : '';
+  $('catBars').innerHTML = cats.length ? hbars(cats.map(([id, v]) => {
+    const c = CAT[id] || CAT.other, pct = total ? v / total * 100 : 0;
+    const n = list.filter(e => e.cat === id).length;
+    return { label: `${c.ic} ${c.name}`, v, tip: `${c.name}：${fmt(v, B)} · ${pct.toFixed(1)}% · ${n} 笔`,
+      val: `${fmt(v, B, { round: true })}<small>${pct.toFixed(0)}%</small>` };
+  }), cats[0][1]) : EMPTY;
+
+  // 趋势：≤ 62 天按日，否则按月
+  const byDay = span <= 62;
+  $('trendTitle').textContent = byDay ? '每日支出' : '每月支出';
+  const buckets = [];
+  if (byDay) {
+    const d = new Date(from + 'T00:00');
+    for (let i = 0; i < span; i++) {
+      const y = new Date(d); y.setDate(d.getDate() + i);
+      buckets.push({ key: isoDate(y), label: `${y.getMonth() + 1}/${y.getDate()}`, v: 0 });
+    }
+  } else {
+    let y = +from.slice(0, 4), m = +from.slice(5, 7);
+    const ey = +to.slice(0, 4), em = +to.slice(5, 7);
+    while (y < ey || (y === ey && m <= em)) {
+      buckets.push({ key: `${y}-${String(m).padStart(2, '0')}`, label: `${String(y).slice(2)}/${m}`, v: 0 });
+      if (++m > 12) { m = 1; y++; }
+    }
+  }
+  const idx = Object.fromEntries(buckets.map((b, i) => [b.key, i]));
+  list.forEach(e => { const k = byDay ? e.date : e.date.slice(0, 7); if (k in idx) buckets[idx[k]].v += baseVal(e); });
+  if (!list.length) { $('trend').innerHTML = EMPTY; }
+  else {
+    const nice = niceMax(Math.max(...buckets.map(b => b.v)));
+    const lines = [0.5, 1].map(f => `<div class="gridline" style="bottom:${f * 100}%"><span>${fmt(nice * f, B, { compact: true, round: true })}</span></div>`).join('');
+    const cols = buckets.map(b =>
+      `<div class="col" data-tip="${b.label}：${fmt(b.v, B)}"><div class="bar" style="height:${nice ? b.v / nice * 100 : 0}%"></div></div>`).join('');
+    const mid = buckets[Math.floor(buckets.length / 2)];
+    $('trend').innerHTML = `<div class="vchart">${lines}${cols}</div>
+      <div class="xaxis"><span>${buckets[0].label}</span>${buckets.length > 2 ? `<span>${mid.label}</span>` : ''}<span>${buckets[buckets.length - 1].label}</span></div>`;
+  }
+
+  // 各行程（仅全部行程视图）
+  $('tripCard').classList.toggle('hidden', !all);
+  if (all) {
+    const rows = trips.map(t => { const l = tripEntries(t.id); return { t, n: l.length, v: l.reduce((s, e) => s + baseVal(e), 0) }; })
+      .filter(r => r.n).sort((a, b) => b.v - a.v);
+    $('tripBars').innerHTML = rows.length ? hbars(rows.map(r => ({ label: esc(r.t.name), v: r.v,
+      tip: `${r.t.name}：${fmt(r.v, B)} · ${r.n} 笔`, val: fmt(r.v, B, { compact: true, round: true }) })), rows[0].v) : EMPTY;
+  }
+
+  // 按记账人（合并过家人的账才显示）
+  const byPerson = {};
+  list.forEach(e => { const p = e.by || '我'; byPerson[p] = (byPerson[p] || 0) + baseVal(e); });
+  const persons = Object.entries(byPerson).sort((a, b) => b[1] - a[1]);
+  $('personCard').classList.toggle('hidden', persons.length < 2);
+  if (persons.length >= 2) $('personBars').innerHTML = hbars(persons.map(([p, v]) => ({ label: esc(p), v,
+    tip: `${p}：${fmt(v, B)} · ${(v / total * 100).toFixed(1)}%`, val: `${fmt(v, B, { round: true })}<small>${(v / total * 100).toFixed(0)}%</small>` })), persons[0][1]);
+
+  // 币种
+  const byCur = {};
+  list.forEach(e => { byCur[e.cur] = byCur[e.cur] || { orig: 0, base: 0, n: 0 }; byCur[e.cur].orig += e.amount; byCur[e.cur].base += baseVal(e); byCur[e.cur].n++; });
+  const curs = Object.entries(byCur).sort((a, b) => b[1].base - a[1].base);
+  $('curBars').innerHTML = curs.length ? hbars(curs.map(([code, o]) => ({ label: CUR[code].name, v: o.base,
+    tip: `${CUR[code].name}：${fmt(o.orig, code)} ≈ ${fmt(o.base, B)} · ${o.n} 笔`,
+    val: `${fmt(o.orig, code, { compact: true })}<small>≈${fmt(o.base, B, { compact: true, round: true })}</small>` })), curs[0][1].base) : EMPTY;
+
+  // 单笔最高
+  const top = [...list].sort((a, b) => b.usd - a.usd).slice(0, 5);
+  $('topList').innerHTML = top.length ? '<div class="entries">' + top.map(e =>
+    entryRow(e, `${e.date} · ${(CAT[e.cat] || CAT.other).name}${e.by ? ' · ' + e.by : ''}`)).join('') + '</div>' : EMPTY;
+}
+function niceMax(v) {
+  if (v <= 0) return 0;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+$('periodChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-p]'); if (!b) return;
+  settings.scope = b.dataset.p; saveSettings(); renderStats();
+});
+$('topList').addEventListener('click', e => { const b = e.target.closest('.entry'); if (b) openEdit(b.dataset.id); });
+
+// 悬停提示
+const tip = $('tip');
+document.addEventListener('pointermove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (!t) { tip.style.opacity = 0; return; }
+  tip.textContent = t.dataset.tip; tip.style.opacity = 1;
+  const w = tip.offsetWidth;
+  tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, e.clientX - w / 2)) + 'px';
+  tip.style.top = (e.clientY - 40) + 'px';
+});
+
+/* ================= 设置 ================= */
+$('baseSel').innerHTML = CURRENCIES.map(c => `<option value="${c.code}">${c.name} ${c.code}</option>`).join('');
+$('baseSel').addEventListener('change', e => { settings.base = e.target.value; saveSettings(); updatePreview(); renderAll(); });
+$('refreshRates').addEventListener('click', async () => {
+  $('refreshRates').textContent = '…';
+  const ok = await fetchRates();
+  $('refreshRates').textContent = '刷新';
+  toast(ok ? '汇率已更新' : '获取失败，继续使用' + (rates ? '缓存' : '估算') + '汇率');
+  renderAll(); updatePreview();
+});
+function renderSettings() {
+  $('baseSel').value = settings.base;
+  $('rateDesc').textContent = rates ? `${rates.source} · ${rates.date}` : '使用离线估算值，联网后自动更新';
+  const B = settings.base;
+  $('rateBaseNote').textContent = `1 ${B} 可兑换`;
+  $('ratesTable').innerHTML = CURRENCIES.filter(c => c.code !== B).map(c => {
+    const r = R()[c.code] / R()[B];
+    return `<tr><td>${c.name} ${c.code}</td><td>${r.toLocaleString('zh-CN', { maximumSignificantDigits: 6 })}</td></tr>`;
+  }).join('');
+  $('tripManage').innerHTML = [...trips].reverse().map(t => {
+    const l = tripEntries(t.id), v = l.reduce((s, e) => s + baseVal(e), 0);
+    return `<div class="set-row"><div><div>${esc(t.name)}</div><div class="desc">${l.length} 笔 · ${fmt(v, B)}</div></div>
+      <span><button class="btn" data-rename="${t.id}">改名</button> <button class="btn danger" data-del="${t.id}">删除</button></span></div>`;
+  }).join('');
+}
+$('tripManage').addEventListener('click', e => {
+  const r = e.target.closest('[data-rename]'), d = e.target.closest('[data-del]');
+  if (r) {
+    const t = trips.find(x => x.id === r.dataset.rename);
+    const name = (prompt('行程名称', t.name) || '').trim();
+    if (name) { t.name = name; saveTrips(); renderAll(); }
+  } else if (d) {
+    const t = trips.find(x => x.id === d.dataset.del), n = tripEntries(t.id).length;
+    if (!confirm(`删除行程「${t.name}」${n ? `以及其中 ${n} 笔记录` : ''}？不可撤销。`)) return;
+    trips = trips.filter(x => x.id !== t.id); entries = entries.filter(x => x.tripId !== t.id);
+    saveTrips(); saveEntries(); ensureTrip(); renderAll();
+  }
+});
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('exportCsv').addEventListener('click', () => {
+  const B = settings.base;
+  const tname = Object.fromEntries(trips.map(t => [t.id, t.name]));
+  const rows = [['行程', '日期', '明细', '分类', '金额', '币种', `折合${B}`, '记账人']];
+  [...entries].sort((a, b) => a.date.localeCompare(b.date)).forEach(e =>
+    rows.push([tname[e.tripId] || '', e.date, e.note, (CAT[e.cat] || CAT.other).name, e.amount, e.cur, baseVal(e).toFixed(2), e.by || '我']));
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  download(`旅行记账_${today()}.csv`, csv, 'text/csv');
+});
+$('backup').addEventListener('click', () =>
+  download(`旅行记账备份_${today()}.json`, JSON.stringify({ version: 2, entries, trips, learned, settings }, null, 1), 'application/json'));
+$('restore').addEventListener('click', () => $('restoreFile').click());
+$('merge').addEventListener('click', () => $('mergeFile').click());
+async function readBackup(input) {
+  const f = input.files[0]; input.value = '';
+  if (!f) return null;
+  try { const j = JSON.parse(await f.text()); if (Array.isArray(j.entries)) return j; } catch {}
+  toast('备份文件无效'); return null;
+}
+$('restoreFile').addEventListener('change', async e => {
+  const j = await readBackup(e.target); if (!j) return;
+  if (!confirm(`将用备份中的 ${j.entries.length} 条记录替换当前 ${entries.length} 条，继续？`)) return;
+  entries = j.entries; trips = j.trips || []; learned = j.learned || {}; Object.assign(settings, j.settings || {});
+  if (!j.version || j.version < 2) settings.schema = 1;
+  saveEntries(); saveTrips(); store.set('learned', learned); saveSettings();
+  migrate(); ensureTrip();
+  curSel = settings.lastCur; renderCurChips(); renderAll(); toast('已恢复');
+});
+// 合并：同名行程合并到一起；记录按 id 去重，并标注记账人
+$('mergeFile').addEventListener('change', async e => {
+  const j = await readBackup(e.target); if (!j) return;
+  const who = (prompt('这份账是谁记的？（会显示在每笔记录上）', '太太') || '').trim();
+  if (!who) return;
+  const theirTrips = j.trips && j.trips.length ? j.trips : [{ id: '_legacy', name: '我的旅行' }];
+  const map = {};
+  for (const t of theirTrips) {
+    let mine = trips.find(x => x.id === t.id) || trips.find(x => x.name === t.name);
+    if (!mine) { mine = { id: t.id === '_legacy' ? uid() : t.id, name: t.name, createdAt: t.createdAt || Date.now() }; trips.push(mine); }
+    map[t.id] = mine.id;
+  }
+  const have = new Set(entries.map(x => x.id));
+  let added = 0;
+  for (const x of j.entries) {
+    if (have.has(x.id)) continue;
+    const cat = CAT[x.cat] ? x.cat : classify(x.note || '');
+    entries.push({ ...x, cat, tripId: map[x.tripId || '_legacy'] || map[theirTrips[0].id], by: x.by || who });
+    added++;
+  }
+  saveEntries(); saveTrips(); renderAll();
+  toast(added ? `已合并 ${added} 笔「${who}」的记录` : '没有新记录需要合并');
+});
+$('wipe').addEventListener('click', () => {
+  if (!confirm('确定清空全部记录和行程？建议先备份。')) return;
+  entries = []; trips = []; saveEntries(); saveTrips(); ensureTrip(); renderAll(); toast('已清空');
+});
+
+/* ================= Tabs & 通用 ================= */
+document.querySelector('.tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-tab]'); if (!b) return;
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['list', 'stats', 'settings'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+});
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.style.opacity = 1;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 1800);
+}
+function renderAll() { renderTripSel(); renderList(); renderStats(); renderSettings(); renderRateStatus(); }
+
+// 启动
+migrate(); ensureTrip();
+$('date').value = today();
+renderCurChips(); updatePreview(); renderAll();
+// 汇率超过 6 小时就自动刷新
+if (!rates || Date.now() - rates.fetchedAt > 6 * 36e5) fetchRates().then(ok => { if (ok) { renderAll(); updatePreview(); } });
+// 离线缓存（需要 http/https 打开）
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
